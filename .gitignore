@@ -1,0 +1,83 @@
+# Java相关
+*.class
+*.jar
+*.war
+*.ear
+
+# 日志文件
+*.log
+logs/
+*.out
+
+# 编译输出文件
+/bin/
+/build/
+/target/
+
+# 临时文件
+*.swp
+*.tmp
+*.bak
+*.sublime-project
+*.sublime-workspace
+*.idea/
+*.iml
+.DS_Store
+
+# Maven
+.mvn/
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Gradle
+.gradle/
+/build/
+/out/
+.gradle/
+*.gradle
+*.bat
+*.sh
+
+# Intellij IDEA
+.idea/
+/*.iml
+/modules.xml
+/.classpath
+/.project
+/.settings/
+*.ipr
+*.iws
+*.iml
+
+# Eclipse
+.classpath
+.project
+.settings/
+target/
+
+# NetBeans
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# MacOS系统文件
+.DS_Store
+
+# Windows系统文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux系统文件
+*~
+
+# 自动生成的文档
+doc/
+
