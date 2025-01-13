@@ -1,0 +1,14 @@
+-------------------------------------------------------------------------------
+Test set: com.fudan.chain.ChainApplicationTests
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 8.368 s <<< FAILURE! - in com.fudan.chain.ChainApplicationTests
+sdkTest  Time elapsed: 5.317 s  <<< ERROR!
+java.lang.RuntimeException: 获取稽核规则失败：http://10.91.255.86:8090/DreamWeb/ctrl/audit/queryRuleByAppid?version=1.6.7&app=wycfdyjxm&token=7134717a-3006-419e-8243-cd848c50c062&timespan=1736239151805&vcode=1f39c35349b6f4f27473005167f2dc2c
+	at com.fudan.chain.ChainApplicationTests.sdkTest(ChainApplicationTests.java:33)
+Caused by: java.lang.RuntimeException: java.io.IOException: Server returned HTTP response code: 502 for URL: http://10.91.255.86:8090/DreamWeb/ctrl/audit/queryRuleByAppid?version=1.6.7&app=wycfdyjxm&token=7134717a-3006-419e-8243-cd848c50c062&timespan=1736239151805&vcode=1f39c35349b6f4f27473005167f2dc2c
+	at com.fudan.chain.ChainApplicationTests.sdkTest(ChainApplicationTests.java:33)
+Caused by: java.io.IOException: Server returned HTTP response code: 502 for URL: http://10.91.255.86:8090/DreamWeb/ctrl/audit/queryRuleByAppid?version=1.6.7&app=wycfdyjxm&token=7134717a-3006-419e-8243-cd848c50c062&timespan=1736239151805&vcode=1f39c35349b6f4f27473005167f2dc2c
+	at com.fudan.chain.ChainApplicationTests.sdkTest(ChainApplicationTests.java:33)
+Caused by: java.io.IOException: Server returned HTTP response code: 502 for URL: http://10.91.255.86:8090/DreamWeb/ctrl/audit/queryRuleByAppid?version=1.6.7&app=wycfdyjxm&token=7134717a-3006-419e-8243-cd848c50c062&timespan=1736239151805&vcode=1f39c35349b6f4f27473005167f2dc2c
+	at com.fudan.chain.ChainApplicationTests.sdkTest(ChainApplicationTests.java:33)
+

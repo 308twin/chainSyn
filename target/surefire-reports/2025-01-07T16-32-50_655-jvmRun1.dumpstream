@@ -1,0 +1,13 @@
+# Created at 2025-01-07T16:34:31.051
+TestSet has not finished before stream error has appeared >> initializing exit by non-null configuration: null
+java.io.EOFException
+	at java.io.DataInputStream.readInt(DataInputStream.java:392)
+	at org.apache.maven.surefire.booter.MasterProcessCommand.decode(MasterProcessCommand.java:115)
+	at org.apache.maven.surefire.booter.CommandReader$CommandRunnable.run(CommandReader.java:391)
+	at java.lang.Thread.run(Thread.java:748)
+
+
+# Created at 2025-01-07T16:34:31.066
+Unexpected IOException with stream: 2025-01-07 16:34:31.063 [SpringContextShutdownHook] [34mINFO [0;39m [36mo.s.scheduling.concurrent.ThreadPoolTaskExecutor:218[0;39m - Shutting down ExecutorService 'applicationTaskExecutor'
+
+
