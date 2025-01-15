@@ -3,6 +3,7 @@ package com.fudan.chain.DO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fudan.chain.service.HashService;
 import com.fudan.chain.utils.ObjectMapperFactory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,11 @@ import org.chainmaker.pb.common.Request;
 @Data
 @Builder
 public class PayloadBaseInfo {
+    private Long block;
+
+    @JsonProperty("tx_num")
+    private Integer txNum;
+
     @JsonProperty("chain_id")
     private String chainId;
 
@@ -57,7 +63,10 @@ public class PayloadBaseInfo {
     @JsonProperty("raw_data")
     private String rawData;
 
-    public PayloadBaseInfo(ChainmakerTransaction.Transaction tx){
+    @JsonProperty("verify_hash")
+    private String verifyHash; //用来校验的hash
+
+    public static PayloadBaseInfo fromTransaction(ChainmakerTransaction.Transaction tx) {
         Request.Payload payload = tx.getPayload();
         ObjectMapper objectMapper = ObjectMapperFactory.getInstance();
         JsonNode rootNode = null;
@@ -71,20 +80,29 @@ public class PayloadBaseInfo {
             JsonNode rawDataNode = rootNode.get("rawData");
             commonData = objectMapper.treeToValue(commonDataNode, CommonData.class);
             rawData = rawDataNode.toString();
-
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            return null;
         }
+        if(commonData == null){
+            return null;
+        }
+        PayloadBaseInfo info = new PayloadBaseInfo();
+        info.chainId = payload.getChainId();
+        info.txId = payload.getTxId();
+        info.operateTime = payload.getTimestamp();
+        info.contractName = payload.getContractName();
+        info.version = commonData.getRuleVersion();
+        info.userId = commonData.getUserId();
+        info.method = payload.getMethod();
+        info.appCode = commonData.getAppCode();
+        info.ruleId = commonData.getRuleId();
+        info.rawData = rawData;
 
-        this.chainId = payload.getChainId();
-        this.txId = payload.getTxId();
-        this.operateTime = payload.getTimestamp();
-        this.contractName = payload.getContractName();
-        this.version = commonData.getRuleVersion();
-        this.userId = commonData.getUserId();
-        this.method = payload.getMethod();
-        this.appCode = commonData.getAppCode();
-        this.rawData = rawData;
+        return info;
+    }
 
+    public String calHash(){
+        return HashService.fnv1aHash(this.rawData);
     }
 }

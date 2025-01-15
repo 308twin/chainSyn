@@ -21,10 +21,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fudan.chain.DO.CommonData;
 import com.fudan.chain.DO.PayloadBaseInfo;
+import com.fudan.chain.service.ChainService;
+import com.fudan.chain.service.DBService;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+import net.bytebuddy.asm.MemberSubstitution.Substitution.Chain;
+
 import org.apache.commons.lang3.StringUtils;
 import org.chainmaker.pb.common.*;
 import org.chainmaker.sdk.ChainClient;
@@ -32,22 +36,30 @@ import org.chainmaker.sdk.ChainClientException;
 import org.chainmaker.sdk.crypto.ChainMakerCryptoSuiteException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @Slf4j
 class ChainApplicationTests {
 
+    @Autowired
+    ChainService chainService;
+    
     static DataAudit dataAudit;
     static ChainMakerClient client;
 
     @Test
     void contextLoads() {
+        chainService.pullDataFromChain();
     }
 
     @BeforeAll
@@ -63,6 +75,76 @@ class ChainApplicationTests {
         client = DataAuditConfigure.getClient("ZW_C8458A2_004", "");
     }
 
+    @Test
+    public void pullDataFromChain() {
+        ChainClient chainClient = client.getChainClient();
+
+        // 使用 CountDownLatch 保持主线程等待，这里设置1表示等待完成或错误（订阅结束）
+        CountDownLatch latch = new CountDownLatch(1);
+
+        try {
+            chainClient.subscribeBlock(53, 73, false, false, new StreamObserver<ResultOuterClass.SubscribeResult>() {
+                @Override
+                public void onNext(ResultOuterClass.SubscribeResult result) {
+                    try {
+                        ChainmakerBlock.BlockInfo blockInfo = ChainmakerBlock.BlockInfo.parseFrom(result.getData());
+                        ChainmakerBlock.BlockHeader blockHeader = blockInfo.getBlock().getHeader();
+                        long blockHeight = blockHeader.getBlockHeight();
+                        System.out.println("----------BLOCK " + blockHeight + "----------");
+
+                        List<ChainmakerTransaction.Transaction> transactions = blockInfo.getBlock().getTxsList();
+                        int i = 0;
+                        for (ChainmakerTransaction.Transaction tx : transactions) {
+                            String contractName = tx.getPayload().getContractName();
+                            // 判断合同名称是否匹配，这里示例中只处理特定合同
+                            if (!StringUtils.equals("SuperviseOnlineVehicle", contractName)) {
+                                continue;
+                            }
+                            // 这里假设 PayloadBaseInfo 构造函数根据 Transaction 实例进行初始化
+                            PayloadBaseInfo payloadBaseInfo = PayloadBaseInfo.fromTransaction(tx);
+                            payloadBaseInfo.setBlock(blockHeight);
+                            payloadBaseInfo.setTxNum(i++);
+                            System.out.println(payloadBaseInfo);
+                        }
+                    } catch (InvalidProtocolBufferException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    System.out.println("订阅出错：" + throwable);
+                    // 发生错误时，减少 latch 数量，使主线程可以退出
+                    latch.countDown();
+                }
+
+                @Override
+                public void onCompleted() {
+                    System.out.println("订阅 completed");
+                    // 订阅正常完成时，减少 latch 数量
+                    latch.countDown();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 遇到异常时确保 latch 被释放，否则主线程会一直等待
+            latch.countDown();
+        }
+
+        // 如果不使用 CountDownLatch.await()，主线程可能先于异步逻辑结束
+        // 这里等待 100 秒（或根据业务需求等待足够长的时间），也可以选择无限期等待
+        try {
+            if (!latch.await(100, TimeUnit.SECONDS)) {
+                System.out.println("等待超时，未接收到订阅完成或错误通知");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("主线程等待被中断: " + e.getMessage());
+        }
+
+        // 程序退出前可做一些资源释放工作，例如关闭 Channel 等（根据实际实现调用相应方法）
+        System.out.println("主线程结束，程序退出");
+    }
     static class ChainMessageImpl extends ChainConsumer {
 
         @Override
@@ -135,13 +217,14 @@ class ChainApplicationTests {
         ChainClient chainClient = client.getChainClient();
         long currentBlockHeight = 0;
         try {
-            currentBlockHeight = chainClient.getCurrentBlockHeight(1000);
+            currentBlockHeight = chainClient.getCurrentBlockHeight(10000);
         } catch (ChainMakerCryptoSuiteException e) {
             throw new RuntimeException(e);
         } catch (ChainClientException e) {
             throw new RuntimeException(e);
         }
         System.out.println(currentBlockHeight);
+        //return currentBlockHeight;
     }
 
     @Test
@@ -150,7 +233,7 @@ class ChainApplicationTests {
         ChainClient chainClient = client.getChainClient();
 
         try {
-            chainClient.subscribeBlock(30, 100, true, false, new StreamObserver<ResultOuterClass.SubscribeResult>() {
+            chainClient.subscribeBlock(10, 11, false, false, new StreamObserver<ResultOuterClass.SubscribeResult>() {
 
                 @Override
                 public void onNext(ResultOuterClass.SubscribeResult result) {
@@ -182,50 +265,15 @@ class ChainApplicationTests {
                         if (!StringUtils.equals("SuperviseOnlineVehicle", contractName)) {
                             continue;
                         }
-//                        System.out.println(payload.getParametersList());
                         byte[] byteArray = tx.toByteArray();
-                        PayloadBaseInfo payloadBaseInfo = new PayloadBaseInfo(tx);
-                        System.out.println(payloadBaseInfo);
-                        //String jsonString = JSON.toJSONString(tx);
-                        //System.out.println(byteArray);
-//                        ObjectMapper objectMapper = new ObjectMapper();
-                        // 解析 JSON 字符串为树结构
-//                        JsonNode rootNode = null;
-//                        CommonData commonData = null;
-//                        String rawData = null;
-//                        try {
-//                            String commonString = payload.getParametersList().get(0).getValue().toStringUtf8();
-//                            rootNode = objectMapper.readTree(commonString);
-//                            JsonNode commonDataNode = rootNode.get("commonData");
-//                            JsonNode rawDataNode = rootNode.get("rawData");
-//                            commonData = objectMapper.treeToValue(commonDataNode, CommonData.class);
-//                            rawData = rawDataNode.toString();
-//                            System.out.println(rawData);
-//                            System.out.println("Constructed CommonData: " + commonData);
-//
-//                        } catch (JsonProcessingException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//
-//                        // 提取 commonData 节点
-//
-//                        PayloadBaseInfo payloadBaseInfo = PayloadBaseInfo.builder()
-//                                .chainId(payload.getChainId())
-//                                .txId(payload.getTxId())
-//                                .operateTime(payload.getTimestamp())
-//                                .contractName(payload.getContractName())
-//                                .version(commonData.getRuleVersion())
-//                                .userId(commonData.getUserId())
-//                                .method(payload.getMethod())
-//                                .appCode(commonData.getAppCode())
-//                                .rawData(rawData).build();
-
-//                      String jsonString = JSON.toJSONString(payload);
-//                        System.out.println("jsonString");
-//                        System.out.println(jsonString);
+                        String jsonString = JSON.toJSONString(tx);
+                        System.out.println(byteArray);
+                        System.out.println(jsonString);
                     }
+//
                     }
 
+//                }
 
                 @Override
                 public void onError(Throwable throwable) {
@@ -240,8 +288,6 @@ class ChainApplicationTests {
         } catch (ChainMakerCryptoSuiteException e) {
             throw new RuntimeException(e);
         } catch (ChainClientException e) {
-            throw new RuntimeException(e);
-        } catch (Exception e){
             throw new RuntimeException(e);
         }
 
